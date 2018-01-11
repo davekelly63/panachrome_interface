@@ -1,0 +1,99 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style1.css') }}">
+
+    <title>Pi Serial Interface</title>
+    <script type="text/javascript" src="{{ url_for('static', filename='js/jquery.js') }}"></script>
+    <script type="text/javascript" src=" {{url_for('static', filename='js/socket.io.min.js') }}"></script>
+    <script type="text/javascript" src=" {{url_for('static', filename='js/Chart.min.js') }}"></script>
+    <script type="text/javascript" charset="utf-8">
+        $(document).ready(function() {
+            // Use a "/test" namespace.
+            // An application can open a connection on multiple namespaces, and
+            // Socket.IO will multiplex all those connections on a single
+            // physical channel. If you don't care about multiple channels, you
+            // can set the namespace to an empty string.
+            namespace = '/test';
+
+            // Connect to the Socket.IO server.
+            // The connection URL has the following format:
+            //     http[s]://<domain>:<port>[/<namespace>]
+            var socket = io.connect(location.protocol + '//' + document.domain + ':' + location.port + namespace);
+
+            // Event handler for new connections.
+            // The callback function is invoked when a connection with the
+            // server is established.
+            socket.on('connect', function() {
+                socket.emit('my_event', {data: 'I\'m connected!\n'});
+            });
+
+            socket.on('port_name', function(msg) {
+                document.getElementById('port_name').value = msg.data;
+            });
+
+            // Event handler for server sent data.
+            // The callback function is invoked whenever the server emits data
+            // to the client. The data is then displayed in the "Received"
+            // section of the page.
+            socket.on('my_response', function(msg) {
+                $('#log1').append('<br>' + $('<div/>').text('Received #' + msg.count + ': ' + msg.data).html());
+                var textarea = document.getElementById('log1');
+                textarea.scrollTop = textarea.scrollHeight;
+            });
+
+            // Event handler for data received on serial port
+            socket.on('rx_data', function(msg) {
+                $('#log1').append('<br>' + $('<div/>').text(msg.data).html());
+                var textarea = document.getElementById('log1');
+                textarea.scrollTop = textarea.scrollHeight;
+            });
+
+            $('form#emit').submit(function(event) {
+               return false;
+            });
+
+            // Handler for Send button pressed. Sends the content of the command text input
+            document.getElementById("send").addEventListener('click', function(e){
+                console.log(e.target.value);
+                socket.emit('send_command', {data: $('#emit_data').val()});
+            });
+
+            // Send Trace for the moment, experiment in managing more than 1 button
+            document.getElementById("trace").addEventListener('click', function(e){
+                console.log(e.target.value);
+                socket.emit('my_event', {data: 'Trace\n'});
+
+            });
+
+            // Kill serial thread
+            document.getElementById("kill_serial").addEventListener('click', function(e){
+                console.log(e.target.value);
+                socket.emit('killing_serial', {data: 'Boom'});
+
+            });
+
+        });
+    </script>
+</head>
+<body>
+    <h1>Panachrome+ Interface</h1>
+
+    Serial port:
+    <input type="text" class="myclass" name="port_name" id="port_name" placeholder="Port Name" readonly>
+
+    <h2>Send Command:</h2>
+    <form id="emit" method="POST" action='#'>
+        <input type="text" class="myclass" name="emit_data" id="emit_data" placeholder="Command" autocomplete="off">
+
+        <button id="send" class="button" type="submit" value="SendButton">Send</button>
+        <button id="trace" class="button" type="submit" value="TraceButton">Trace</button>
+        <button id="kill_serial" class="button" type="submit" value="KillButton">Kill Serial</button>
+
+    </form>
+
+    <h2>Receive:</h2>
+    <textarea id="log1" rows="20" cols="100" placeholder="Responses" readonly="true"></textarea>
+
+</body>
+</html>
